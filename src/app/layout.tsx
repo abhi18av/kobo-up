@@ -11,6 +11,10 @@ import BackgroundShapes from '@/app/components/BackgroundShapes';
 
 export { metadata } from './(landing)/metadata';
 
+// Set NEXT_PUBLIC_DISABLE_ANALYTICS=1 at build time for a private, local deployment:
+// it drops Google Tag Manager and the Vercel analytics scripts.
+const analyticsEnabled = process.env.NEXT_PUBLIC_DISABLE_ANALYTICS !== '1';
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -19,11 +23,11 @@ export default function RootLayout({
   return (
     <html lang="en" className="bg-white lg:bg-zinc-100 dark:bg-zinc-900 dark:lg:bg-zinc-950">
       <head>
-        <GoogleTagManager gtmId="GTM-M82SLQZ6" />
+        {analyticsEnabled && <GoogleTagManager gtmId="GTM-M82SLQZ6" />}
       </head>
 
       <body className="">
-        <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-M82SLQZ6" height="0" width="0" style={{ display: "none", visibility: "hidden" }}></iframe></noscript>
+        {analyticsEnabled && <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-M82SLQZ6" height="0" width="0" style={{ display: "none", visibility: "hidden" }}></iframe></noscript>}
 
         <StackedLayout
           navbar={<AppNavbar />}
@@ -39,8 +43,8 @@ export default function RootLayout({
           <Footer />
         </StackedLayout>
         
-        <Analytics />
-        <SpeedInsights />
+        {analyticsEnabled && <Analytics />}
+        {analyticsEnabled && <SpeedInsights />}
       </body>
     </html>
   );
