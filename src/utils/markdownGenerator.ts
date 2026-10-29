@@ -1,5 +1,21 @@
 import { IBook, IBookChapter } from '@/types/kobo'
 import { getColorEmoji } from './koboColors'
+import { describePenColor } from './penColors'
+
+/** A handwriting annotation's exported files, relative to the markdown file. */
+export interface MarkupAsset {
+  /** Page screenshot with the ink composited on top. */
+  imagePath: string
+  /** The ink alone, as the device's vector SVG. */
+  svgPath?: string
+  /** Pen fills found in the SVG, in first-seen order. */
+  penColors?: string[]
+}
+
+export interface MarkdownOptions {
+  /** Exported files per markup, keyed by bookmarkId. Markups without an entry keep the placeholder. */
+  markupAssets?: Map<string, MarkupAsset>
+}
 
 const hasNotes = (chapter: IBookChapter): boolean =>
   Boolean(chapter.notes && chapter.notes.length > 0)
@@ -22,7 +38,11 @@ export const filterChaptersWithNotes = (chapters: IBookChapter[]): IBookChapter[
     return false
   })
 
-export const generateMarkdownContent = (book: IBook, bookChapterAndNotes: IBookChapter[]): string => {
+export const generateMarkdownContent = (
+  book: IBook,
+  bookChapterAndNotes: IBookChapter[],
+  options: MarkdownOptions = {}
+): string => {
   let content = ``
 
   content += `# ${book.bookTitle}\n`;
@@ -36,7 +56,14 @@ export const generateMarkdownContent = (book: IBook, bookChapterAndNotes: IBookC
       content += '\n';
       chapter.notes.forEach((chapterNote) => {
         if (chapterNote.type === 'markup') {
-          content += `* [Handwriting annotation]\n`;
+          const asset = options.markupAssets?.get(chapterNote.bookmarkId);
+          if (asset) {
+            content += `* ![Handwriting annotation](${asset.imagePath})\n`;
+            const pens = (asset.penColors ?? []).map(describePenColor);
+            if (pens.length > 0) content += `  Pens: ${pens.join(' · ')}\n`;
+          } else {
+            content += `* [Handwriting annotation]\n`;
+          }
         } else if (chapterNote.text) {
           const emoji = getColorEmoji(chapterNote.color);
           const prefix = emoji ? `${emoji} ` : '';

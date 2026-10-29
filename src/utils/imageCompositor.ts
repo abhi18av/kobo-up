@@ -1,12 +1,14 @@
 /**
  * Composite an SVG overlay on top of a JPG background using HTML Canvas.
- * Returns the combined image as a JPEG Blob.
+ * Returns the combined image as a JPEG Blob, or PNG when `mimeType` asks for it
+ * (`quality` is ignored for PNG).
  * Browser-only (requires Canvas API).
  */
 export async function compositeMarkupImage(
   jpgData: ArrayBuffer,
   svgData: ArrayBuffer,
-  quality: number = 0.85
+  quality: number = 0.85,
+  mimeType: 'image/jpeg' | 'image/png' = 'image/jpeg'
 ): Promise<Blob> {
   const jpgBlob = new Blob([jpgData], { type: 'image/jpeg' })
   const svgBlob = new Blob([svgData], { type: 'image/svg+xml' })
@@ -35,7 +37,7 @@ export async function compositeMarkupImage(
           if (blob) resolve(blob)
           else reject(new Error('Failed to composite image'))
         },
-        'image/jpeg',
+        mimeType,
         quality
       )
     })

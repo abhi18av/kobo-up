@@ -3,6 +3,8 @@ import JSZip from 'jszip'
 import { KoboService } from './koboService'
 import { generateMarkdownContent } from '@/utils/markdownGenerator'
 import { generateTextContent } from '@/utils/textGenerator'
+import { addBundleToZip, buildMarkdownBundle } from './markdownExportService'
+import { generateSafeFilename } from '@/utils/safeFilename'
 
 /** Export format offered in the multi-book export flow. */
 export type BooksExportFormat = 'markdown' | 'txt'
@@ -47,13 +49,7 @@ export class ExportService {
    * Generate safe filename from book title
    */
   static generateSafeFilename(title: string, extension: string): string {
-    // Remove or replace invalid filename characters
-    const safeTitle = title
-      .replace(/[<>:"/\\|?*]/g, '') // Remove invalid chars
-      .replace(/\s+/g, '-') // Replace spaces with hyphens
-      .substring(0, 100) // Limit length
-    
-    return `${safeTitle}.${extension}`
+    return generateSafeFilename(title, extension)
   }
 
 
@@ -82,12 +78,15 @@ export class ExportService {
         // Load book chapters with notes/highlights (same as book detail page)
         const bookChapters = await KoboService.loadBookChaptersWithNotes(book.contentId)
 
-        // Use exactly the same logic as book detail page - identical content for both formats
-        const content = generateContent(book, bookChapters)
-
         const safeTitle = book.bookTitle || book.title || 'Untitled'
         const filename = this.generateSafeFilename(safeTitle, extension)
-        zip.file(filename, content)
+
+        if (format === 'markdown') {
+          // Same markdown as the book detail page, with handwriting images in a shared assets/ folder
+          addBundleToZip(zip, filename, await buildMarkdownBundle(book, bookChapters))
+        } else {
+          zip.file(filename, generateContent(book, bookChapters))
+        }
       } catch (error) {
         const bookTitle = bookFromList.bookTitle || bookFromList.title || 'Untitled'
         console.error(`Failed to load content for book: ${bookTitle}`, error)

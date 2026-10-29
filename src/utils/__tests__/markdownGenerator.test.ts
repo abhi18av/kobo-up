@@ -103,4 +103,35 @@ describe('generateMarkdownContent', () => {
       '> Thought\n\n'
     );
   });
+
+  describe('handwriting annotations', () => {
+    const markupChapter = [{
+      contentId: 'c1',
+      title: 'Chapter 1',
+      depth: 2,
+      notes: [{ bookmarkId: 'mk-1', type: 'markup', text: '', annotation: null }],
+    }] as unknown as IBookChapter[];
+
+    it('keeps the text placeholder when no exported image is available', () => {
+      const result = generateMarkdownContent(mockBook, markupChapter);
+      expect(result).toContain('* [Handwriting annotation]\n');
+    });
+
+    it('embeds the exported image and lists the pens used', () => {
+      const markupAssets = new Map([
+        ['mk-1', { imagePath: 'assets/mk-1.png', svgPath: 'assets/mk-1.svg', penColors: ['#c60c30', '#000000'] }],
+      ]);
+      const result = generateMarkdownContent(mockBook, markupChapter, { markupAssets });
+
+      expect(result).toContain('* ![Handwriting annotation](assets/mk-1.png)\n');
+      expect(result).toContain('  Pens: red — disagree · black — my own words\n');
+      expect(result).not.toContain('[Handwriting annotation]\n');
+    });
+
+    it('omits the pen line when the SVG had no pen fills', () => {
+      const markupAssets = new Map([['mk-1', { imagePath: 'assets/mk-1.png', penColors: [] }]]);
+      const result = generateMarkdownContent(mockBook, markupChapter, { markupAssets });
+      expect(result).not.toContain('Pens:');
+    });
+  });
 });

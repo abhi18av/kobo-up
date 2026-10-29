@@ -15,7 +15,7 @@ import { pushToDataLayer } from '@/utils/gtm';
 import { DonationCard } from '@/components/DonationCard'
 import { NotesHeader } from './components/NotesHeader'
 import { NotesSection } from './components/NotesSection'
-import { generateMarkdownContent, downloadMarkdownFile } from '@/utils/markdownGenerator'
+import { downloadBookMarkdown } from '@/services/markdownExportService'
 import { generateTextContent, downloadTextFile } from '@/utils/textGenerator'
 
 interface Toast {
@@ -209,9 +209,8 @@ function NotesPageContent() {
    * @param book - The book whose notes are being exported.
    * @param chapters - The book's chapters with their attached notes/highlights.
    */
-  const handleExportMarkdown = (book: IBook, chapters: IBookChapter[]) => {
-    const content = generateMarkdownContent(book, chapters);
-    downloadMarkdownFile(`${book.bookTitle}.md`, content);
+  const handleExportMarkdown = async (book: IBook, chapters: IBookChapter[]) => {
+    await downloadBookMarkdown(book, chapters);
     pushToDataLayer({ event: 'export_complete', format: 'markdown', scope: 'single_book' });
     maybeShowPostExportDonation();
   };
