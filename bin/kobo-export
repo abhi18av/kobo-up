@@ -1,0 +1,6 @@
+#!/bin/sh
+# Launches cli/kobo-export.ts through this repo's own tsx, so `npm link` can
+# put `kobo-export` on PATH and it still resolves the repo's code and deps.
+SCRIPT=$(realpath "$0")
+REPO=$(dirname "$(dirname "$SCRIPT")")
+exec "$REPO/node_modules/.bin/tsx" --tsconfig "$REPO/tsconfig.json" "$REPO/cli/kobo-export.ts" "$@"
