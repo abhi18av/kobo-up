@@ -16,7 +16,7 @@ import sharp from 'sharp'
 import { getBook, getBookList, getChaptersWithNotes } from '../src/models/KoboDB'
 import type { IBook, IBookChapter } from '../src/types/kobo'
 import { generateMarkdownContent, MarkupAsset } from '../src/utils/markdownGenerator'
-import { extractPenColors } from '../src/utils/penColors'
+import { extractPenColors, resolvePenColor } from '../src/utils/penColors'
 import { generateSafeFilename } from '../src/utils/safeFilename'
 
 const ASSETS_DIR = 'assets'
@@ -30,6 +30,7 @@ Options:
   -o, --out <dir>      Output folder                           [default: ./kobo-export]
   -b, --book <text>    Only books whose title contains <text> (case-insensitive)
   -l, --list           List annotated books with their counts; write nothing
+  -p, --per-book       One folder per book: <out>/<Book>/<Book>.md, <Book>.markups.json, assets/
   -h, --help           Show this help
 `
 
@@ -86,6 +87,7 @@ async function main(): Promise<number> {
       out: { type: 'string', short: 'o', default: './kobo-export' },
       book: { type: 'string', short: 'b' },
       list: { type: 'boolean', short: 'l', default: false },
+      'per-book': { type: 'boolean', short: 'p', default: false },
       help: { type: 'boolean', short: 'h', default: false },
     },
   })
@@ -138,19 +140,47 @@ async function main(): Promise<number> {
   }
 
   const outDir = resolve(values.out!)
-  mkdirSync(join(outDir, ASSETS_DIR), { recursive: true })
   const markupsDir = join(device, '.kobo', 'markups')
 
   for (const { book, chapters, highlights, markups } of exports) {
+    const filename = generateSafeFilename(book.bookTitle || 'Untitled', 'md')
+    // --per-book keeps everything for one book together; image links stay relative (assets/…)
+    const bookDir = values['per-book'] ? join(outDir, filename.replace(/\.md$/, '')) : outDir
+    mkdirSync(join(bookDir, ASSETS_DIR), { recursive: true })
+
     const markupAssets = new Map<string, MarkupAsset>()
     for (const note of chapters.flatMap((chapter) => chapter.notes ?? [])) {
       if (note.type !== 'markup') continue
-      const asset = await exportMarkup(markupsDir, outDir, note.bookmarkId)
+      const asset = await exportMarkup(markupsDir, bookDir, note.bookmarkId)
       if (asset) markupAssets.set(note.bookmarkId, asset)
     }
 
-    const filename = generateSafeFilename(book.bookTitle || 'Untitled', 'md')
-    writeFileSync(join(outDir, filename), generateMarkdownContent(book, chapters, { markupAssets }))
+    writeFileSync(join(bookDir, filename), generateMarkdownContent(book, chapters, { markupAssets }))
+
+    // A machine-readable list of the handwriting, for tools that link to it (e.g. a Zotero note).
+    // Holds identifiers, chapters, pens and paths — no book text.
+    const manifest = {
+      title: book.bookTitle,
+      author: book.author,
+      markdown: filename,
+      markups: chapters.flatMap((chapter) =>
+        (chapter.notes ?? [])
+          .filter((note) => note.type === 'markup' && markupAssets.has(note.bookmarkId))
+          .map((note) => {
+            const asset = markupAssets.get(note.bookmarkId)!
+            return {
+              bookmarkId: note.bookmarkId,
+              chapter: chapter.title,
+              chapterProgress: note.chapterProgress,
+              created: note.dateCreated,
+              image: asset.imagePath,
+              svg: asset.svgPath,
+              pens: (asset.penColors ?? []).map((hex) => ({ hex, ...resolvePenColor(hex) })),
+            }
+          })
+      ),
+    }
+    writeFileSync(join(bookDir, generateSafeFilename(book.bookTitle || 'Untitled', 'markups.json')), JSON.stringify(manifest, null, 1))
     console.log(`✓ ${filename}  (${highlights} highlights/notes, ${markupAssets.size}/${markups} handwriting)`)
   }
 

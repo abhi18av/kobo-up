@@ -21,6 +21,7 @@ export interface PenColor {
 export const PEN_PALETTE: Record<string, string> = {
   '#000000': 'black',
   '#c60c30': 'red',
+  '#ffd44d': 'yellow', // confirmed by the founder, 2026-10-31
 }
 
 /**

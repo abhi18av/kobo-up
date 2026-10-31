@@ -37,6 +37,7 @@ describe('resolvePenColor', () => {
   it('names measured pens and attaches their meaning', () => {
     expect(resolvePenColor('#c60c30')).toEqual({ name: 'red', meaning: 'disagree' })
     expect(resolvePenColor('#000000')).toEqual({ name: 'black', meaning: 'my own words' })
+    expect(resolvePenColor('#FFD44D')).toEqual({ name: 'yellow', meaning: 'fact / definition' })
   })
 
   it('reports an uncalibrated fill by its hex instead of dropping it', () => {
